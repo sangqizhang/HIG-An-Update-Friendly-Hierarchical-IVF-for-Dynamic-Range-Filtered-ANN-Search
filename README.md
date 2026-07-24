@@ -71,34 +71,42 @@ For HDF5 datasets, place your loader logic in user code or reuse `utils/h5_loade
 
 ## Basic Usage
 
+The following example builds an index over synthetic vector--timestamp pairs and runs a range-filtered ANN query. If you run it directly from a source checkout without installing the package, set `PYTHONPATH=src` first.
+
 ```python
 import numpy as np
 from hierarchical_ivf import HierarchicalAdaIVFIndex
 
-rng = np.random.RandomState(42)
-base = rng.randn(5000, 64).astype("float32")
-base /= np.linalg.norm(base, axis=1, keepdims=True) + 1e-12
-base_time = np.arange(len(base)).astype("float32")
+
+def normalize(vectors):
+    return vectors / (np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-12)
+
+
+rng = np.random.RandomState(7)
+n_base = 800
+dim = 32
+
+base = normalize(rng.randn(n_base, dim).astype("float32"))
+base_ids = np.arange(n_base)
+base_time = np.arange(n_base).astype("float32")
 
 index = HierarchicalAdaIVFIndex(
-    n_fine_clusters=128,
-    n_coarse_clusters=16,
+    n_fine_clusters=32,
+    n_coarse_clusters=8,
     n_probe=4,
+    max_cluster_size=256,
 )
 
 index.train(base)
-index.add(base, ids=np.arange(len(base)), scalars=base_time)
+index.add(base, ids=base_ids, scalars=base_time)
 
-query = base[-1] + 0.01 * rng.randn(64).astype("float32")
-query /= np.linalg.norm(query) + 1e-12
-
-# Search only recent records.
+query = base[720].copy()
 distances, ids = index.search(
     query,
-    k=10,
-    scalar_range=(4500, 4999),
+    k=5,
+    scalar_range=(700, 799),
     use_hierarchy=True,
-    early_stop_threshold=1000,
+    early_stop_threshold=200,
 )
 
 print(ids)
@@ -108,19 +116,24 @@ print(distances)
 ## Dynamic Insertion Example
 
 ```python
-new_vectors = rng.randn(1000, 64).astype("float32")
-new_vectors /= np.linalg.norm(new_vectors, axis=1, keepdims=True) + 1e-12
-new_ids = np.arange(5000, 6000)
-new_time = np.arange(5000, 6000).astype("float32")
+n_insert = 160
+new_vectors = normalize(rng.randn(n_insert, dim).astype("float32"))
+new_ids = np.arange(n_base, n_base + n_insert)
+new_time = np.arange(n_base, n_base + n_insert).astype("float32")
 
 index.add(new_vectors, ids=new_ids, scalars=new_time, auto_recluster=True)
 
+query = new_vectors[10].copy()
 distances, ids = index.search(
     query,
-    k=10,
-    scalar_range=(5500, 5999),
+    k=5,
+    scalar_range=(n_base, n_base + n_insert - 1),
     use_hierarchy=True,
+    early_stop_threshold=200,
 )
+
+print(ids)
+print(distances)
 ```
 
 ## Saving and Loading
