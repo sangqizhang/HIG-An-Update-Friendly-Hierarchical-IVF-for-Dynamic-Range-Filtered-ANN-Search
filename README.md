@@ -8,7 +8,6 @@ The implementation combines:
 - **Centroid-level graph guidance**: a compact graph over partition representatives repairs coarse-routing misses without maintaining a graph over every vector.
 - **Range-aware list layout**: scalar values are stored with vectors so queries can pre-filter candidates by range before distance computation.
 - **Append-friendly updates**: new records can be inserted in batches without rebuilding the full index.
-
 ## Repository Layout
 
 ```text
@@ -18,6 +17,7 @@ HIG/
 │   └── hierarchical_ivf/    # Python API
 ├── utils/                   # Dataset loading and runtime helpers
 ├── examples/                # Minimal runnable examples
+├── supplementary/           # supplementary material of HIG
 ├── CMakeLists.txt           # C++ extension build for hierarchical IVF
 ├── build.sh                 # Convenience build script
 ├── setup.py                 # Python extension build for Ada-IVF core
